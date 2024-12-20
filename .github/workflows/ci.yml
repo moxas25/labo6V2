@@ -1,0 +1,46 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches:
+      - '*'  # Dit zorgt ervoor dat de pipeline draait bij elk pull request naar een branch
+  schedule:
+    - cron: '0 0 * * 0'  # Deze cron job zorgt ervoor dat de pipeline elke zondag om middernacht draait.
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # Dit betekent dat de pipeline draait op een Ubuntu-machine
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3  # Haalt de code uit je repository
+
+    - name: Set Up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.x  # Zet Python op de juiste versie
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt  # Installeer de dependencies uit requirements.txt
+        pip install bandit safety gitleaks  # Installeer de tools die we nodig hebben
+
+    - name: Run Bandit (Security Scan)
+      run: |
+        bandit -r . -v  # Voer Bandit uit om de code te scannen op beveiligingsproblemen
+      continue-on-error: false  # Zorg ervoor dat de pipeline stopt bij beveiligingsproblemen
+
+    - name: Run Safety (Dependency Check)
+      run: |
+        safety check --full-report  # Voer Safety uit om de afhankelijkheden te scannen op kwetsbaarheden
+      continue-on-error: false  # Zorg ervoor dat de pipeline stopt als er kwetsbaarheden worden gevonden
+
+    - name: Run Gitleaks (Secrets Scan)
+      run: |
+        gitleaks detect --path=. --config=.gitleaks.toml  # Controleer op geheime sleutels in je code
+      continue-on-error: false  # Zorg ervoor dat de pipeline stopt als er geheime sleutels worden gevonden
+
+    - name: Success
+      run: echo "All checks passed successfully!"  # Dit bericht wordt getoond als alle stappen succesvol zijn
+      if: success()  # Dit zorgt ervoor dat dit bericht alleen verschijnt als alle checks geslaagd zijn
