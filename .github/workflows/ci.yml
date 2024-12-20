@@ -18,29 +18,35 @@ jobs:
     - name: Set Up Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.x  # Zet Python op de juiste versie
+        python-version: 3.12 # Zet Python op de juiste versie
 
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt  # Installeer de dependencies uit requirements.txt
-        pip install bandit safety gitleaks  # Installeer de tools die we nodig hebben
+        pip install --use-deprecated=legacy-resolver -r requirements.txt
 
-    - name: Run Bandit (Security Scan)
+    - name: Run Pytest
       run: |
-        bandit -r . -v  # Voer Bandit uit om de code te scannen op beveiligingsproblemen
-      continue-on-error: false  # Zorg ervoor dat de pipeline stopt bij beveiligingsproblemen
+        pytest hello.py
 
-    - name: Run Safety (Dependency Check)
+    - name: Run Bandit (SAST) - Security Analysis
       run: |
-        safety check --full-report  # Voer Safety uit om de afhankelijkheden te scannen op kwetsbaarheden
-      continue-on-error: false  # Zorg ervoor dat de pipeline stopt als er kwetsbaarheden worden gevonden
+        pip install bandit
+        bandit -r . -v
+      continue-on-error: false  # Fail the PR if issues are found
+
+    - name: Run Dependency Vulnerability Check (Safety)
+      run: |
+        pip install safety
+        safety check --full-report
+      continue-on-error: false  # Fail the PR if vulnerable dependencies are found
 
     - name: Run Gitleaks (Secrets Scan)
-      run: |
-        gitleaks detect --path=. --config=.gitleaks.toml  # Controleer op geheime sleutels in je code
-      continue-on-error: false  # Zorg ervoor dat de pipeline stopt als er geheime sleutels worden gevonden
+      uses: gitleaks/gitleaks-action@v1
+      with:
+        config-path: .gitleaks.toml  # Optional: If you have custom config, provide it here
+      continue-on-error: false  # Fail the PR if secrets are found
 
     - name: Success
-      run: echo "All checks passed successfully!"  # Dit bericht wordt getoond als alle stappen succesvol zijn
-      if: success()  # Dit zorgt ervoor dat dit bericht alleen verschijnt als alle checks geslaagd zijn
+      run: echo "All checks passed successfully!"
+      if: success()  # This step only runs if all checks pass # Dit zorgt ervoor dat dit bericht alleen verschijnt als alle checks geslaagd zijn
