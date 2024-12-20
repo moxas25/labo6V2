@@ -1,0 +1,2 @@
+requests==2.28.0  # A version that is compatible with Python 3.12
+urllib3==1.26.15  # A compatible version of urllib3
